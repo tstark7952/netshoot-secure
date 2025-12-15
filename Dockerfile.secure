@@ -1,0 +1,122 @@
+# Secure netshoot image with minimized vulnerabilities
+# Note: Some tools (ctop, termshark) removed due to abandoned upstream with unfixable CVEs
+# All Go binaries built from source to get latest Go stdlib
+
+# Stage 1: Build Go binaries from source with latest Go
+FROM golang:1.25.5-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /build
+
+# Build grpcurl from source
+RUN git clone --depth 1 https://github.com/fullstorydev/grpcurl.git && \
+    cd grpcurl/cmd/grpcurl && \
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/grpcurl .
+
+# Build calicoctl from source (using release tag to get security fixes)
+RUN git clone --branch v3.31.2 --depth 1 https://github.com/projectcalico/calico.git && \
+    cd calico/calicoctl/calicoctl && \
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/calicoctl .
+
+# Build fortio from source
+RUN git clone --depth 1 https://github.com/fortio/fortio.git && \
+    cd fortio && \
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o /tmp/fortio .
+
+# Stage 2: Main image with all network tools
+FROM alpine:edge
+
+# Add testing repo for packages not in main/community
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+
+# Install all packages with latest security updates
+# Note: ctop and termshark removed due to unfixable vulnerabilities in abandoned projects
+RUN set -ex \
+    && apk update \
+    && apk upgrade --no-cache \
+    && apk add --no-cache \
+    apache2-utils \
+    bash \
+    bind-tools \
+    bird \
+    bridge-utils \
+    busybox-extras \
+    conntrack-tools \
+    curl \
+    dhcping \
+    drill \
+    ethtool \
+    file \
+    fping \
+    iftop \
+    iperf \
+    iperf3 \
+    iproute2 \
+    ipset \
+    iptables \
+    iptraf-ng \
+    iputils \
+    ipvsadm \
+    httpie \
+    jq \
+    libc6-compat \
+    liboping \
+    ltrace \
+    mtr \
+    net-snmp-tools \
+    netcat-openbsd \
+    nftables \
+    ngrep \
+    nmap \
+    nmap-nping \
+    nmap-scripts \
+    openssl \
+    py3-pip \
+    py3-setuptools \
+    scapy \
+    socat \
+    speedtest-cli \
+    openssh \
+    strace \
+    tcpdump \
+    tcptraceroute \
+    trippy \
+    tshark \
+    util-linux \
+    vim \
+    git \
+    zsh \
+    websocat \
+    swaks \
+    perl-crypt-ssleay \
+    perl-net-ssleay \
+    && rm -rf /var/cache/apk/*
+
+# Upgrade urllib3 to latest version to fix CVEs
+RUN pip3 install --break-system-packages --upgrade urllib3
+
+# Copy all Go binaries built from source (with latest Go)
+COPY --from=builder /tmp/grpcurl /usr/local/bin/grpcurl
+COPY --from=builder /tmp/calicoctl /usr/local/bin/calicoctl
+COPY --from=builder /tmp/fortio /usr/local/bin/fortio
+
+# Setting User and Home
+USER root
+WORKDIR /root
+ENV HOSTNAME=netshoot
+
+# Install oh-my-zsh
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended && \
+    git clone --depth 1 https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions && \
+    git clone --depth 1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+
+COPY zshrc .zshrc
+COPY motd motd
+
+# Fix permissions for OpenShift and tshark
+RUN chmod -R g=u /root && \
+    chown root:root /usr/bin/dumpcap
+
+# Running ZSH
+CMD ["zsh"]

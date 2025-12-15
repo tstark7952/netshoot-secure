@@ -1,0 +1,38 @@
+
+ _ __   ___| |_ ___| |__   ___   ___ | |_
+| '_ \ / _ \ __/ __| '_ \ / _ \ / _ \| __|
+| | | |  __/ |_\__ \ | | | (_) | (_) | |_
+|_| |_|\___|\__|___/_| |_|\___/ \___/ \__|  secure
+
+Available Tools:
+================
+
+DNS/Name Resolution:
+  dig, nslookup, drill, host, bind-tools
+
+HTTP/API Testing:
+  curl, httpie (http/https), wget, grpcurl, websocat
+
+Network Diagnostics:
+  ping, mtr, traceroute, tcptraceroute, fping, arping
+  nmap, nping, netcat (nc), socat
+
+Traffic Capture/Analysis:
+  tcpdump, tshark, ngrep, iftop, iptraf-ng
+
+Performance Testing:
+  iperf, iperf3, fortio, ab (apache bench)
+
+Kubernetes/Network Policy:
+  calicoctl
+
+IP/Routing/Firewall:
+  ip, ss, netstat, route, arp, bridge
+  iptables, nftables, ipset, conntrack, ipvsadm
+
+TLS/SSL:
+  openssl, swaks (SMTP)
+
+Other:
+  ethtool, scapy (python), trippy, jq, vim
+
